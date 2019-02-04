@@ -1,6 +1,6 @@
 
 ..
-   Copyright 2017-2018 Cedric Mesnil <cslashm@gmail.com>, Ledger SAS <cedric@ledger.fr>
+   Copyright 2017-2019 Cedric Mesnil <cslashm@gmail.com>, Ledger SAS <cedric@ledger.fr>
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
    You may obtain a copy of the License at
@@ -824,7 +824,7 @@ Secret Add
     | compute |x|  = |x1| + |x2|
     | compute |ex| = |enc|[|spk|](|x|)
 
-return |ex|
+return |ex|.
 
 **Command**
 
@@ -870,7 +870,7 @@ Generate Keys
     | compute  |xP| = |x|.|P|
     | compute  |ex| = |enc|[|spk|](|x|)
 
-return |P|, |ex|
+return |P|, |ex|.
 
 **Command**
 
@@ -914,7 +914,7 @@ Generate Key Derivation
  | compute  |Drv|  = 8.|D|
  | compute  |eDrv| = |enc|[|spk|](|Drv|)
 
-return |eDrv|
+return |eDrv|.
 
 **Command**
 
@@ -961,7 +961,7 @@ derivation_to_scalar
     | compute  |s|    = |s| % |order|
     | compute  |es|   = |enc|[|spk|](|s|)
 
-return |es|
+return |es|.
 
 **Command**
 
@@ -1016,7 +1016,7 @@ then:
     | compute  |x|'    = (|x|+|s|) % |order|
     | compute  |ex|'   = |enc|[|spk|](|x|)
 
-return |ex|
+return |ex|.
 
 **Command**
 
@@ -1072,7 +1072,7 @@ then:
 
     | compute  |P|'   = |P|+|s|.|G|
 
-return |P|
+return |P|.
 
 **Command**
 
@@ -1119,7 +1119,7 @@ secret_key_to_public_key
      | compute  |x| = |dec|[|spk|](|ex|)
      | compute  |P| = |x|.|G|
 
-return |P|
+return |P|.
 
 **Command**
 
@@ -1165,7 +1165,7 @@ generate_key_image
      | compute  |P|'  = ge_from_fe(|s|)
      | compute  |Img| = |x|.|P|'
 
-return |Img|
+return |Img|.
 
 
 **Command**
@@ -1359,8 +1359,14 @@ Blind Amount and Mask
 **Description**
 
    | compute |AKout| = |dec|[|spk|](|eAKout|)
-   | compute |ek|    = |k| + |H|(|AKout|)
-   | compute |ev|    = |k| + |H|(|H|(|AKout|))
+   | if scheme v1
+   |   compute |ek|    = |k| + |H|(|AKout|)
+   |   compute |ev|    = |k| + |H|(|H|(|AKout|))
+   | else if scheme v2
+   |   compute |k|   = |H|("commitment_mask"||AKout|)) % |order|
+   |   compute |s|   = |H|("amount"||Drv)
+   |   compute |v|[0:7]   = |ev|[0:7] ^ |s|[0:7]
+
    | update |lH|     : |Hupd|(|v| \| |k| \| |AKout|)
    | if option 'last' is set:
    |   finalize |lH|
@@ -1390,6 +1396,17 @@ The application returns |ev|, |ek|
 | 20    | encrypted private derivation data |eAKout|                       |
 +--------+-----------------------------------------------------------------+
 
+*specific options*
+
++---------------+----------------------------------------------------------+
+| ``-------xx`` | Commitment scheme version                                |
+|               |                                                          |
+| ``-------10`` | BulletProofV2                                            |
+|               |                                                          |
+| ``-------00`` | Prior to BulletProofV2                                   |
++---------------+----------------------------------------------------------+
+
+Note: Whatever the mask scheme is, |k| and |v| are always transmited as 32 bytes.
 
 **Response data**
 
@@ -1463,8 +1480,14 @@ values. It also re-compute the |lH| value to ensure consistency with steps 3 and
 So for each command received, do:
 
    | compute |Drv| =  8.|rr|.|Aout|
-   | compute |k|   = |ek| - |H|(|Drv|)
-   | compute |v|   = |ek| - |H|(|H|(|Drv|))
+   | if scheme v1
+   |   compute |k|   = |ek| - |H|(|Drv|)
+   |   compute |v|   = |ev| - |H|(|H|(|Drv|))
+   | else if scheme v2
+   |   compute |k|   = |H|("commitment_mask"||Drv|)) % |order|
+   |   compute |s|   = |H|("amount"||Drv)
+   |   compute |v|[0:7]   = |ev|[0:7] ^ |s|[0:7]
+
    | check |Ctf|
 
    | ask user validation of |Aout|, |Bout|
@@ -1507,6 +1530,18 @@ So for each command received, do:
 |        | | }                                                             |
 |        |                                                                 |
 +--------+-----------------------------------------------------------------+
+
+*specific options*
+
++---------------+----------------------------------------------------------+
+| ``-------xx`` | Mask scheme version                                      |
+|               |                                                          |
+| ``-------10`` | V2: short amount (8 bytes)                               |
+|               |                                                          |
+| ``-------00`` | V1: long amount  (32 bytes)                              |
++---------------+----------------------------------------------------------+
+
+Note: Whatever the mask scheme is, |v| is always transmited as 32 bytes.
 
 
 Finalize MLSAG-prehash

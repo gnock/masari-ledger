@@ -409,12 +409,11 @@ static void monero_ge_fromfe_frombytes(unsigned char *ge , unsigned char *bytes)
 /*                            DERIVATION & KEY                             */
 /* ======================================================================= */
 
-
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-void monero_hash_to_scalar(unsigned char *scalar, unsigned char *raw) {
-    monero_keccak_F(raw,32,scalar);
+void monero_hash_to_scalar(unsigned char *scalar, unsigned char *raw, unsigned int raw_len) {
+    monero_keccak_F(raw,raw_len,scalar);
     monero_reduce(scalar, scalar);
 }
 
@@ -457,7 +456,6 @@ void monero_derivation_to_scalar(unsigned char *scalar, unsigned char *drv_data,
     monero_reduce(scalar, varint);
 }
 
-
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
@@ -470,9 +468,6 @@ void monero_derive_secret_key(unsigned char *x,
 
     //generate
     monero_addm(x, tmp, ec_priv);
-    monero_io_insert(tmp,32);
-    monero_io_insert(ec_priv,32);
-    monero_io_insert(x,32);
 }
 
 /* ----------------------------------------------------------------------- */
@@ -489,7 +484,9 @@ void monero_derive_public_key(unsigned char *x,
     monero_ecadd(x,tmp,ec_pub);
 }
 
-
+/* ----------------------------------------------------------------------- */
+/* ---                                                                 --- */
+/* ----------------------------------------------------------------------- */
 void monero_secret_key_to_public_key(unsigned char *ec_pub, unsigned char *ec_priv) {
     monero_ecmul_G(ec_pub, ec_priv);
 }
@@ -503,10 +500,10 @@ void monero_generate_key_image(unsigned char *img, unsigned char *P, unsigned ch
     monero_ecmul_k(img, I,x);
 }
 
-
 /* ======================================================================= */
 /*                               SUB ADDRESS                               */
 /* ======================================================================= */
+
 /* ----------------------------------------------------------------------- */
 /* --- ok                                                              --- */
 /* ----------------------------------------------------------------------- */
@@ -530,6 +527,7 @@ void monero_get_subaddress_spend_public_key(unsigned char *x,unsigned char *inde
     // D = B + M
     monero_ecadd(x,x,G_monero_vstate.B);
  }
+
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
@@ -559,7 +557,6 @@ void monero_get_subaddress_secret_key(unsigned char *sub_s, unsigned char *s, un
 /* ======================================================================= */
 /*                                  MATH                                   */
 /* ======================================================================= */
-
 
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
@@ -679,6 +676,48 @@ void monero_ecsub(unsigned char *W, unsigned char *P, unsigned char *Q) {
 
     cx_edward_compress_point(CX_CURVE_Ed25519, Pxy, sizeof(Pxy));
     os_memmove(W, &Pxy[1], 32);
+}
+
+/* ----------------------------------------------------------------------- */
+/* ---                                                                 --- */
+/* ----------------------------------------------------------------------- */
+/*
+    static key ecdhHash(const key &k)
+    {
+        char data[38];
+        rct::key hash;
+        memcpy(data, "amount", 6);
+        memcpy(data + 6, &k, sizeof(k));
+        cn_fast_hash(hash, data, sizeof(data));
+        return hash;
+    }
+*/
+void monero_ecdhHash(unsigned char *x, unsigned char *k) {
+  unsigned char data[38];
+  os_memmove(data, "amount", 6);
+  os_memmove(data + 6, k, 32);
+  monero_keccak_F(data, 38, x);
+}
+
+/* ----------------------------------------------------------------------- */
+/* ---                                                                 --- */
+/* ----------------------------------------------------------------------- */
+/*
+    key genCommitmentMask(const key &sk)
+    {
+        char data[15 + sizeof(key)];
+        memcpy(data, "commitment_mask", 15);
+        memcpy(data + 15, &sk, sizeof(sk));
+        key scalar;
+        hash_to_scalar(scalar, data, sizeof(data));
+        return scalar;
+    }
+*/
+void monero_genCommitmentMask(unsigned char *c,  unsigned char *sk) {
+    unsigned char data[15 + 32];
+    os_memmove(data, "commitment_mask", 15);
+    os_memmove(data + 15, sk, 32);
+    monero_hash_to_scalar(c, data, 15+32);
 }
 
 /* ----------------------------------------------------------------------- */
@@ -823,7 +862,7 @@ uint64_t monero_bamount2uint64(unsigned char *binary) {
 /* ----------------------------------------------------------------------- */
 /* ---                                                                 --- */
 /* ----------------------------------------------------------------------- */
-int monero_bamount2str(unsigned char *binary,  char *str, unsigned int str_len) {    
+int monero_bamount2str(unsigned char *binary,  char *str, unsigned int str_len) {
     return monero_amount2str(monero_bamount2uint64(binary), str,str_len);
 }
 
