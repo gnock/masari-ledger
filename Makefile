@@ -23,13 +23,9 @@ include $(BOLOS_SDK)/Makefile.defines
 
 #Monero /44'/128'
 APP_LOAD_PARAMS=  --path "2147483692/2147483776" --curve secp256k1 $(COMMON_LOAD_PARAMS) --appFlags 0x40
-APPNAME = "Monero"
+APPNAME = "Masari"
 
-ifeq ($(TARGET_NAME),TARGET_BLUE)
-ICONNAME = images/icon_monero_blue.gif
-else
-ICONNAME = images/icon_monero.gif
-endif
+ICONNAME = images/icon_masari.gif
 
 APPVERSION_M=1
 APPVERSION_N=1
